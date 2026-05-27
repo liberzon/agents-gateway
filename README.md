@@ -7,7 +7,7 @@
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/agno-agi/agents-gateway)
 [![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?type=git&repository=github.com/agno-agi/agents-gateway)
 
-A production-ready API gateway for serving AI agents. Built with FastAPI and [Agno 2.5.10+](https://github.com/agno-ai/agno).
+A production-ready API gateway for serving AI agents. Built with FastAPI and [Agno 2.5.16+](https://github.com/agno-ai/agno).
 
 ## Features
 
