@@ -1,0 +1,127 @@
+import unittest
+from unittest.mock import MagicMock, patch
+
+from agents import Model
+from agents.model_factory import create_model
+
+
+class TestCreateModel(unittest.TestCase):
+    """Test cases for the create_model() factory function."""
+
+    @patch("agents.model_factory.Gemini")
+    def test_create_gemini_model(self, mock_gemini_class):
+        mock_gemini_class.return_value = MagicMock()
+        result = create_model(Model.gemini_2_5_pro, gemini_api_key="test-key")
+
+        mock_gemini_class.assert_called_once_with(id="gemini-2.5-pro", api_key="test-key")
+        self.assertEqual(result, mock_gemini_class.return_value)
+
+    @patch("agents.model_factory.Gemini")
+    def test_create_gemini_with_max_tokens_uses_max_output_tokens(self, mock_gemini_class):
+        mock_gemini_class.return_value = MagicMock()
+        create_model(Model.gemini_2_5_flash, gemini_api_key="test-key", max_tokens=1000)
+
+        call_kwargs = mock_gemini_class.call_args[1]
+        self.assertIn("max_output_tokens", call_kwargs)
+        self.assertNotIn("max_tokens", call_kwargs)
+        self.assertEqual(call_kwargs["max_output_tokens"], 1000)
+
+    @patch("agents.model_factory.OpenAIChat")
+    def test_create_openai_model(self, mock_openai_class):
+        mock_openai_class.return_value = MagicMock()
+        result = create_model(Model.gpt_5_4, openai_api_key="test-key")
+
+        mock_openai_class.assert_called_once_with(id="gpt-5.4", api_key="test-key")
+        self.assertEqual(result, mock_openai_class.return_value)
+
+    @patch("agents.model_factory.OpenAIChat")
+    def test_create_openai_with_max_tokens(self, mock_openai_class):
+        mock_openai_class.return_value = MagicMock()
+        create_model(Model.gpt_5_4_mini, openai_api_key="test-key", max_tokens=2000)
+
+        call_kwargs = mock_openai_class.call_args[1]
+        self.assertIn("max_tokens", call_kwargs)
+        self.assertEqual(call_kwargs["max_tokens"], 2000)
+
+    @patch("agents.model_factory.Claude", create=True)
+    def test_create_anthropic_model(self, mock_claude_class):
+        mock_claude_class.return_value = MagicMock()
+        with patch("agents.model_factory.ModelProvider") as mock_provider:
+            mock_provider.ANTHROPIC = "anthropic"
+            # Need to patch the lazy import inside create_model
+            with patch.dict("sys.modules", {"agno.models.anthropic": MagicMock(Claude=mock_claude_class)}):
+                result = create_model(Model.claude_sonnet_4_6, anthropic_api_key="test-key")
+
+        self.assertIsNotNone(result)
+
+    def test_missing_gemini_api_key_raises(self):
+        with self.assertRaises(ValueError) as ctx:
+            create_model(Model.gemini_2_5_pro)
+        self.assertIn("Gemini", str(ctx.exception))
+
+    def test_missing_openai_api_key_raises(self):
+        with self.assertRaises(ValueError) as ctx:
+            create_model(Model.gpt_5_4)
+        self.assertIn("OpenAI", str(ctx.exception))
+
+    def test_missing_anthropic_api_key_raises(self):
+        with self.assertRaises(ValueError) as ctx:
+            create_model(Model.claude_opus_4_6)
+        self.assertIn("Anthropic", str(ctx.exception))
+
+    @patch("agents.model_factory.Gemini")
+    def test_temperature_passthrough(self, mock_gemini_class):
+        mock_gemini_class.return_value = MagicMock()
+        create_model(Model.gemini_2_5_pro, gemini_api_key="test-key", temperature=0.7)
+
+        call_kwargs = mock_gemini_class.call_args[1]
+        self.assertEqual(call_kwargs["temperature"], 0.7)
+
+    @patch("agents.model_factory.Gemini")
+    def test_no_optional_params_when_none(self, mock_gemini_class):
+        mock_gemini_class.return_value = MagicMock()
+        create_model(Model.gemini_2_5_pro, gemini_api_key="test-key")
+
+        call_kwargs = mock_gemini_class.call_args[1]
+        self.assertNotIn("temperature", call_kwargs)
+        self.assertNotIn("max_output_tokens", call_kwargs)
+
+    @patch("agents.model_factory.Gemini")
+    def test_string_to_enum_conversion(self, mock_gemini_class):
+        mock_gemini_class.return_value = MagicMock()
+        create_model("gemini-2.5-pro", gemini_api_key="test-key")
+
+        mock_gemini_class.assert_called_once_with(id="gemini-2.5-pro", api_key="test-key")
+
+    def test_invalid_model_string_raises(self):
+        with self.assertRaises(ValueError):
+            create_model("nonexistent-model", gemini_api_key="test-key")
+
+    @patch("agents.model_factory.OpenAIChat")
+    def test_all_openai_models_create_openai_chat(self, mock_openai_class):
+        mock_openai_class.return_value = MagicMock()
+        for model in [Model.gpt_5_4, Model.gpt_5_4_mini, Model.gpt_5_4_nano]:
+            with self.subTest(model=model):
+                mock_openai_class.reset_mock()
+                create_model(model, openai_api_key="test-key")
+                mock_openai_class.assert_called_once()
+
+    @patch("agents.model_factory.Gemini")
+    def test_all_gemini_models_create_gemini(self, mock_gemini_class):
+        mock_gemini_class.return_value = MagicMock()
+        gemini_models = [
+            Model.gemini_2_5_pro,
+            Model.gemini_2_5_flash,
+            Model.gemini_2_5_flash_lite,
+            Model.gemini_3_1_pro,
+            Model.gemini_3_flash,
+        ]
+        for model in gemini_models:
+            with self.subTest(model=model):
+                mock_gemini_class.reset_mock()
+                create_model(model, gemini_api_key="test-key")
+                mock_gemini_class.assert_called_once()
+
+
+if __name__ == "__main__":
+    unittest.main()

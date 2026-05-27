@@ -1,0 +1,129 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements**.txt"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Create virtual environment
+        run: uv venv
+
+      - name: Install dependencies
+        run: |
+          uv pip sync requirements.txt
+          uv pip install ruff mypy
+
+      - name: Check formatting with ruff
+        run: uv run ruff format . --check
+
+      - name: Lint with ruff
+        run: uv run ruff check .
+
+      - name: Type-check with mypy
+        run: uv run mypy .
+
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements**.txt"
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Create virtual environment
+        run: uv venv --python ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          uv pip sync requirements.txt
+          uv pip install pytest pytest-cov pytest-asyncio testcontainers
+
+      - name: Run tests
+        env:
+          TESTING: "true"
+          OPENAI_API_KEY: "test-key"
+        run: |
+          uv run pytest tests/ \
+            --cov=api --cov=agents --cov=db \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            -v
+
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.12' && github.repository == 'liberzon/agents-gateway'
+        uses: codecov/codecov-action@v6
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+  # Security scanning
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'  # Don't fail on vulnerabilities (warning only)
+
+  pip-audit:
+    name: Python Dependency Audit
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit dependencies
+        run: pip-audit -r requirements.txt

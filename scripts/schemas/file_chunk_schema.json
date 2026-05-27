@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FileChunk",
+  "type": "object",
+  "required": ["name", "meta_data", "content"],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "meta_data": {
+      "type": "object",
+      "required": [
+        "page",
+        "chunk",
+        "chunk_size",
+        "org_id",
+        "file_id",
+        "original_filename",
+        "file_type",
+        "content_type",
+        "source_id",
+        "user_id",
+        "file_hash",
+        "file_size"
+      ],
+      "properties": {
+        "page": {
+          "type": "integer"
+        },
+        "chunk": {
+          "type": "integer"
+        },
+        "chunk_size": {
+          "type": "integer"
+        },
+        "org_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "project_id": {
+          "type": ["string", "null"],
+          "format": "uuid"
+        },
+        "file_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "original_filename": {
+          "type": "string"
+        },
+        "file_type": {
+          "type": "string"
+        },
+        "content_type": {
+          "type": "string"
+        },
+        "source_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "file_hash": {
+          "type": "string"
+        },
+        "file_size": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": true
+    },
+    "content": {
+      "type": "string"
+    },
+    "usage": {
+      "type": ["object", "null"]
+    }
+  },
+  "additionalProperties": false
+}

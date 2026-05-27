@@ -1,0 +1,14 @@
+- name: "schedule meeting request"
+  input: "Schedule a meeting with alice@example.com tomorrow at 2pm"
+  expected_tools: ["schedule_meeting"]
+  expected_patterns: ["alice@example.com"]
+
+- name: "list events request"
+  input: "What meetings do I have today?"
+  expected_tools: ["list_events"]
+  expected_patterns: []
+
+- name: "send email request"
+  input: "Send an email to bob@example.com about the project update"
+  expected_tools: ["send_email"]
+  expected_patterns: ["bob@example.com"]

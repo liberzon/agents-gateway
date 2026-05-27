@@ -1,0 +1,102 @@
+# Koyeb service definition
+# https://www.koyeb.com/docs/deploy/koyeb-yaml
+
+name: agents-gateway
+type: web
+
+docker:
+  dockerfile: Dockerfile
+  context: .
+
+ports:
+  - port: 8000
+    protocol: http
+
+instance_types:
+  - type: nano
+
+scaling:
+  min: 1
+  max: 3
+
+health_checks:
+  - type: http
+    path: /health
+    port: 8000
+    interval: 30
+    timeout: 10
+    grace_period: 60
+
+env:
+  # Database Configuration (required)
+  - key: DB_HOST
+    secret: db-host
+  - key: DB_PORT
+    secret: db-port
+  - key: DB_USER
+    secret: db-user
+  - key: DB_PASS
+    secret: db-pass
+  - key: DB_DATABASE
+    secret: db-database
+  # Authentication (required for production)
+  - key: ADMIN_SECRET
+    secret: admin-secret
+  # LLM API Keys (at least one required)
+  - key: GOOGLE_API_KEY
+    secret: google-api-key
+  - key: OPENAI_API_KEY
+    secret: openai-api-key
+  - key: ANTHROPIC_API_KEY
+    secret: anthropic-api-key
+  # Vector Database (optional)
+  - key: QDRANT_URL
+    secret: qdrant-url
+  - key: QDRANT_PORT
+    secret: qdrant-port
+  - key: QDRANT_API_KEY
+    secret: qdrant-api-key
+  # Token Encryption (optional)
+  - key: SECRET_TOKEN_ENC_KEY
+    secret: secret-token-enc-key
+  # Prompts Storage Backend (postgres, langsmith, service)
+  - key: PROMPT_STORAGE_BACKEND
+    value: postgres
+  - key: LANGCHAIN_API_KEY
+    secret: langchain-api-key
+  - key: SERVICE_PROMPTS
+    secret: service-prompts
+  # Observability - Core Settings
+  - key: OTEL_SERVICE_NAME
+    value: agents-gateway
+  - key: OTEL_ENVIRONMENT
+    secret: otel-environment
+  - key: OTEL_SERVICE_VERSION
+    secret: otel-service-version
+  # Observability - Tracing Backend (console, otlp, sentry)
+  - key: OTEL_TRACING_BACKEND
+    value: console
+  - key: OTEL_TRACING_SAMPLE_RATE
+    value: "1.0"
+  # Observability - Logging Backend (console, otlp, logtail - comma-separated)
+  - key: OTEL_LOGGING_BACKEND
+    value: console
+  - key: OTEL_LOG_LEVEL
+    value: INFO
+  # Observability - OTLP (OpenTelemetry Collector)
+  - key: OTEL_OTLP_ENDPOINT
+    secret: otel-otlp-endpoint
+  - key: OTEL_OTLP_INSECURE
+    secret: otel-otlp-insecure
+  # Observability - Sentry
+  - key: SENTRY_DSN
+    secret: sentry-dsn
+  - key: SENTRY_TRACES_SAMPLE_RATE
+    secret: sentry-traces-sample-rate
+  - key: SENTRY_PROFILES_SAMPLE_RATE
+    secret: sentry-profiles-sample-rate
+  # Observability - Better Stack / Logtail
+  - key: BETTERSTACK_SOURCE_TOKEN
+    secret: betterstack-source-token
+  - key: BETTERSTACK_HOST
+    secret: betterstack-host

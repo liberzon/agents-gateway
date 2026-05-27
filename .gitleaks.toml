@@ -1,0 +1,42 @@
+# Gitleaks configuration
+# https://github.com/gitleaks/gitleaks
+
+title = "Agents Gateway Gitleaks Config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+  '''\.env\.example$''',
+  '''tests/.*''',
+  '''\.github/.*\.md$''',
+  '''docs/.*\.md$''',
+  '''README\.md$''',
+  '''CONTRIBUTING\.md$''',
+  '''postman/.*\.json$''',
+]
+
+regexTarget = "match"
+regexes = [
+  # Allow placeholder/example values
+  '''your-.*-value''',
+  '''your-.*-key''',
+  '''example\.com''',
+  '''placeholder''',
+  '''xxxx.*xxxx''',
+  '''not-used''',
+]
+
+[[rules]]
+id = "ignore-test-tokens"
+description = "Ignore test/mock tokens in test files"
+regex = '''test.*token|mock.*token|fake.*token'''
+allowlist = { paths = ['''tests/.*'''] }
+
+[[rules]]
+id = "ignore-example-env"
+description = "Ignore example environment files"
+regex = '''.*'''
+allowlist = { paths = ['''\.env\.example$'''] }

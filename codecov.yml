@@ -1,0 +1,36 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 70%
+        threshold: 2%
+    patch:
+      default:
+        target: 80%
+        threshold: 5%
+
+  precision: 2
+  round: down
+  range: "50...100"
+
+parsers:
+  gcov:
+    branch_detection:
+      conditional: yes
+      loop: yes
+      method: no
+      macro: no
+
+comment:
+  layout: "reach,diff,flags,tree,betaprofiling"
+  behavior: default
+  require_changes: no
+  require_base: no
+  require_head: yes
+
+ignore:
+  - "tests/**/*"
+  - "scripts/**/*"
+  - "docs/**/*"
+  - "**/__pycache__/**"
+  - "**/conftest.py"

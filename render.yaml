@@ -1,0 +1,85 @@
+# Render Blueprint specification
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: agents-gateway
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    plan: starter
+    autoDeploy: true
+    envVars:
+      # Database Configuration (required)
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: DB_DATABASE
+        sync: false
+      # Authentication (required for production)
+      - key: ADMIN_SECRET
+        sync: false
+      # LLM API Keys (at least one required)
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # Vector Database (optional)
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_PORT
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      # Token Encryption (optional - auto-generated if not set)
+      - key: SECRET_TOKEN_ENC_KEY
+        sync: false
+      # Prompts Storage Backend (postgres, langsmith, service)
+      - key: PROMPT_STORAGE_BACKEND
+        value: postgres
+      - key: LANGCHAIN_API_KEY
+        sync: false
+      - key: SERVICE_PROMPTS
+        sync: false
+      # Observability - Core Settings
+      - key: OTEL_SERVICE_NAME
+        value: agents-gateway
+      - key: OTEL_ENVIRONMENT
+        sync: false
+      - key: OTEL_SERVICE_VERSION
+        sync: false
+      # Observability - Tracing Backend (console, otlp, sentry)
+      - key: OTEL_TRACING_BACKEND
+        value: console
+      - key: OTEL_TRACING_SAMPLE_RATE
+        value: "1.0"
+      # Observability - Logging Backend (console, otlp, logtail - comma-separated)
+      - key: OTEL_LOGGING_BACKEND
+        value: console
+      - key: OTEL_LOG_LEVEL
+        value: INFO
+      # Observability - OTLP (OpenTelemetry Collector)
+      - key: OTEL_OTLP_ENDPOINT
+        sync: false
+      - key: OTEL_OTLP_INSECURE
+        sync: false
+      # Observability - Sentry
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_TRACES_SAMPLE_RATE
+        sync: false
+      - key: SENTRY_PROFILES_SAMPLE_RATE
+        sync: false
+      # Observability - Better Stack / Logtail
+      - key: BETTERSTACK_SOURCE_TOKEN
+        sync: false
+      - key: BETTERSTACK_HOST
+        sync: false

@@ -1,0 +1,51 @@
+version: 2
+updates:
+  # Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      python-minor:
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # pydantic 2.12.x hard-pins pydantic-core==2.41.5, so bumping
+      # pydantic-core in isolation causes pip resolution to fail.
+      # Remove this rule once pydantic releases a version pinning a
+      # newer pydantic-core.
+      - dependency-name: "pydantic-core"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+    commit-message:
+      prefix: "deps"
+    labels:
+      - "dependencies"
+      - "python"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+  # Docker
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "build"
+    labels:
+      - "dependencies"
+      - "docker"

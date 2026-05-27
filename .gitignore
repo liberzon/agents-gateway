@@ -1,0 +1,53 @@
+# See https://help.github.com/ignore-files/ for more about ignoring files.
+
+.DS_Store
+
+# Claude Code instructions (local only)
+CLAUDE.md
+
+# Cache
+.mypy_cache
+*__pycache__*
+*.egg-info
+*.pyc
+*.pytest_cache
+*.ruff_cache
+*.cache*
+*.config*
+.prompts_cache/
+
+# Machine specific
+.idea
+.vscode
+.run
+.claude/
+
+.envrc
+
+# ignore storage dir
+/storage
+
+# ignore dist dir
+dist
+
+# Sphinx build output
+docs/_build/
+
+# ignore virtualenvs
+.venv*
+venv*
+
+.env
+.env.*
+
+# Service account credentials
+**/service-account.json
+
+# Postman collections (may contain internal data)
+postman/
+
+**/htmlcov/
+**/.coverage
+tmp/
+cli/*.log
+/scripts/sample_vectors.jsonl

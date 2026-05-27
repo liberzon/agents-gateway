@@ -1,0 +1,76 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: agents-gateway
+  labels:
+    cloud.googleapis.com/location: us-central1
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "10"
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/startup-cpu-boost: "true"
+    spec:
+      containerConcurrency: 100
+      timeoutSeconds: 300
+      serviceAccountName: agents-gateway-sa@PROJECT_ID.iam.gserviceaccount.com
+      containers:
+        - image: gcr.io/PROJECT_ID/agents-gateway:latest
+          ports:
+            - name: http1
+              containerPort: 8080
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          env:
+            - name: PORT
+              value: "8080"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: username
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: host
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: database
+            - name: SECRET_TOKEN_ENC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: token-encryption-key
+                  key: latest
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+  traffic:
+    - percent: 100
+      latestRevision: true

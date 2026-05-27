@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agents-gateway
+  labels:
+    app: agents-gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: agents-gateway
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: agents-gateway
+    spec:
+      containers:
+        - name: agents-gateway
+          image: ghcr.io/agno-agi/agents-gateway:latest
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "8080"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: agents-gateway-db
+                  key: username
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: agents-gateway-db
+                  key: password
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: agents-gateway-config
+                  key: db-host
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: agents-gateway-config
+                  key: db-port
+            - name: DB_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: agents-gateway-config
+                  key: db-database
+            - name: SECRET_TOKEN_ENC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: agents-gateway-secrets
+                  key: token-encryption-key
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+      restartPolicy: Always
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: agents-gateway-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: agents-gateway
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
