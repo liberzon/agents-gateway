@@ -73,7 +73,7 @@ pillow==12.2.0
 portalocker==3.2.0
 prompt-toolkit==3.0.52
 proto-plus==1.28.0
-protobuf==6.33.6
+protobuf==7.35.0
 psycopg==3.3.4
 psycopg-binary==3.3.4
 pyasn1==0.6.3
