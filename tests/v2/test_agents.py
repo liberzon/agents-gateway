@@ -350,6 +350,7 @@ class TestV2AgentsAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         # No need to check for 404 error as we're using the health endpoint
 
+    @patch.dict("os.environ", {"PROMPT_STORAGE_BACKEND": "service"})
     @patch("api.routes.v2.agents.store_token_usage")
     @patch("api.routes.v2.agents.prompts_client")
     @patch("api.routes.v2.agents.get_agent_info")
@@ -454,6 +455,7 @@ class TestV2AgentsAPI(unittest.TestCase):
     # New Tests for Toolkit Integration
     # ========================================
 
+    @patch.dict("os.environ", {"PROMPT_STORAGE_BACKEND": "service"})
     @patch("api.routes.v2.agents.store_token_usage")
     @patch("api.routes.v2.agents.prompts_client")
     @patch("db.agent_info_crud.get_agent_info")
@@ -768,6 +770,7 @@ class TestV2AgentsAPI(unittest.TestCase):
         # Implementation returns 422 validation error without proper agent setup
         self.assertEqual(response.status_code, 422)
 
+    @patch.dict("os.environ", {"PROMPT_STORAGE_BACKEND": "service"})
     @patch("api.routes.v2.agents.compute_cache_key")
     @patch("api.routes.v2.agents.prompts_client")
     @patch("db.agent_info_crud.get_agent_info")
@@ -1122,6 +1125,7 @@ class TestV2AgentsAPI(unittest.TestCase):
         # but processing may fail if user_profile.tenant_id is accessed
         self.assertIn(response.status_code, [500, 200])  # Either error or success depending on implementation
 
+    @patch.dict("os.environ", {"PROMPT_STORAGE_BACKEND": "service"})
     @patch("api.routes.v2.agents.store_token_usage")
     @patch("api.routes.v2.agents.prompts_client")
     @patch("api.routes.v2.agents.get_agent_info")
