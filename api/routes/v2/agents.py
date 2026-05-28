@@ -1,6 +1,7 @@
 import copy
 import json
 import logging
+import os
 import time
 import uuid
 import zlib
@@ -20,6 +21,7 @@ from sqlalchemy.orm import Session
 from agents import Model
 from agents.agent import get_agent as get_agent_impl
 from agents.agent import slug_to_table_name
+from agents.v2_selector import _get_prompt_from_local_storage
 from api.services.access_token import fetch_access_token, has_access_tokens_batch  # noqa: F401
 from api.services.models import PullPromptResponse
 from api.services.prompts_client import prompts_client
@@ -836,8 +838,18 @@ async def get_agent(
     if not db_agent:
         logging.error(f"Agent {agent_id} not found in database")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
-    # Fetch prompt template from prompts service
-    prompt_data = prompts_client.get_prompt(db_agent.prompt_service_id)  # type: ignore[arg-type]
+    # Fetch prompt template, respecting PROMPT_STORAGE_BACKEND (mirrors
+    # agents.v2_selector.get_v2_agent): use local postgres storage when that's
+    # the backend, with a prompts-service fallback otherwise. Previously this
+    # always hit the prompts service client, which 500s whenever the prompts
+    # microservice isn't configured -- even with the documented postgres backend.
+    prompt_data: Optional[PullPromptResponse] = None
+    if os.environ.get("PROMPT_STORAGE_BACKEND", "postgres").lower() == "postgres":
+        prompt_data = _get_prompt_from_local_storage(db, str(db_agent.prompt_service_id))
+    else:
+        prompt_data = prompts_client.get_prompt(db_agent.prompt_service_id)  # type: ignore[arg-type]
+        if not prompt_data:
+            prompt_data = _get_prompt_from_local_storage(db, str(db_agent.prompt_service_id))
     if not prompt_data:
         logging.error(f"Failed to fetch prompt for agent {agent_id}")
         raise HTTPException(
