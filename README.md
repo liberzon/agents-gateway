@@ -3,9 +3,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template?template=https://github.com/agno-agi/agents-gateway)
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/agno-agi/agents-gateway)
-[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?type=git&repository=github.com/agno-agi/agents-gateway)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template?template=https://github.com/liberzon/agents-gateway-deploy)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/liberzon/agents-gateway-deploy)
+[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?type=git&repository=github.com/liberzon/agents-gateway-deploy)
 
 A production-ready API gateway for serving AI agents. Built with FastAPI and [Agno 2.5.16+](https://github.com/agno-ai/agno).
 
@@ -195,9 +195,9 @@ pytest tests/v2/
 
 | Platform | Configuration | Script |
 |----------|---------------|--------|
-| [Railway](https://railway.app/template?template=https://github.com/agno-agi/agents-gateway) | `railway.toml` | `scripts/deploy_to_railway.sh` |
-| [Render](https://render.com/deploy?repo=https://github.com/agno-agi/agents-gateway) | `render.yaml` | `scripts/deploy_to_render.sh` |
-| [Koyeb](https://app.koyeb.com/deploy?type=git&repository=github.com/agno-agi/agents-gateway) | `koyeb.yaml` | `scripts/deploy_to_koyeb.sh` |
+| [Railway](https://railway.app/template?template=https://github.com/liberzon/agents-gateway-deploy) | `railway.toml` | `scripts/deploy_to_railway.sh` |
+| [Render](https://render.com/deploy?repo=https://github.com/liberzon/agents-gateway-deploy) | `render.yaml` | `scripts/deploy_to_render.sh` |
+| [Koyeb](https://app.koyeb.com/deploy?type=git&repository=github.com/liberzon/agents-gateway-deploy) | `koyeb.yaml` | `scripts/deploy_to_koyeb.sh` |
 
 ### Cloud Platforms
 
@@ -266,7 +266,7 @@ OTEL_OTLP_ENDPOINT=http://collector:4317
 ## Support
 
 - [Agno Documentation](https://docs.agno.com)
-- [Report an Issue](https://github.com/agno-agi/agents-gateway/issues)
+- [Report an Issue](https://github.com/liberzon/agents-gateway/issues)
 
 ## License
 
