@@ -189,9 +189,7 @@ def build_mcp_toolkits(config: Optional[AgentConfig]) -> list:
     worker_config = getattr(config, "worker_config", None)
     servers = list(getattr(worker_config, "mcp_servers", None) or []) if worker_config else []
     http_servers = [
-        s
-        for s in servers
-        if getattr(s, "url", None) and getattr(s, "type", "") in ("http", "streamable-http")
+        s for s in servers if getattr(s, "url", None) and getattr(s, "type", "") in ("http", "streamable-http")
     ]
     if not http_servers:
         return []
