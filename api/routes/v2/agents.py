@@ -843,14 +843,15 @@ async def _mcp_chat_streamer(build_agent_fn, mcp_toolkits, body: "ChatRequest", 
                 await stack.enter_async_context(toolkit)
             ensure_mcp_ready(mcp_toolkits)
             agent = build_agent_fn(mcp_toolkits)
-        except Exception as e:
+        except Exception:
             # The stream's status (200) is already sent, so surface a structured SSE
             # error event (the route's try/except can't catch failures here — this
-            # generator runs after the route frame exits).
-            logging.error(f"MCP connect failed (streaming): {type(e).__name__}: {e}")
+            # generator runs after the route frame exits). Log the detail server-side
+            # only; the client gets a generic message (no exception data leaked).
+            logging.error("MCP connect failed (streaming)", exc_info=True)
             yield _format_sse_event(
                 "error",
-                {"status": "error", "error": f"MCP tool server unavailable: {type(e).__name__}: {e}"},
+                {"status": "error", "error": "MCP tool server unavailable"},
             )
             return
         async for event in chat_response_streamer_v2(agent, body, db):
@@ -953,11 +954,11 @@ async def chat_with_agent_v2(agent_id: str, body: ChatRequest, db: Session = Dep
                     for toolkit in mcp_toolkits:
                         await stack.enter_async_context(toolkit)
                     ensure_mcp_ready(mcp_toolkits)
-                except Exception as e:
-                    logging.error(f"MCP connect failed (non-streaming): {type(e).__name__}: {e}")
+                except Exception:
+                    logging.error("MCP connect failed (non-streaming)", exc_info=True)
                     raise HTTPException(
                         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                        detail=f"MCP tool server unavailable: {type(e).__name__}",
+                        detail="MCP tool server unavailable",
                     )
                 mcp_agent = _build_mcp_agent(mcp_toolkits)
                 run_config = {
