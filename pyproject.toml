@@ -45,6 +45,7 @@ dependencies = [
   "opentelemetry-instrumentation-sqlalchemy>=0.62b0",
   # Observability - Sentry (backward compatibility)
   "sentry-sdk>=2.57.0",
+  "mcp>=1.28.0",
 ]
 
 

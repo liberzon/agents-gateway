@@ -179,6 +179,32 @@ def get_system_timezone() -> str:
     return "UTC"
 
 
+def build_mcp_toolkits(config: Optional[AgentConfig]) -> list:
+    """Build (unconnected) agno MCPTools from an agent's worker_config.mcp_servers.
+
+    Returns [] when no HTTP MCP servers are declared. `agno.tools.mcp` is imported
+    lazily so a missing `mcp` dependency only affects MCP-configured agents, not all
+    chat agents. The caller must connect each toolkit (async) before running the agent.
+    """
+    worker_config = getattr(config, "worker_config", None)
+    servers = list(getattr(worker_config, "mcp_servers", None) or []) if worker_config else []
+    http_servers = [
+        s
+        for s in servers
+        if getattr(s, "url", None) and getattr(s, "type", "") in ("http", "streamable-http")
+    ]
+    if not http_servers:
+        return []
+
+    from agno.tools.mcp import MCPTools, StreamableHTTPClientParams
+
+    toolkits = []
+    for server in http_servers:
+        params = StreamableHTTPClientParams(url=server.url, headers=(server.headers or None))
+        toolkits.append(MCPTools(server_params=params, transport="streamable-http"))
+    return toolkits
+
+
 def get_agent(
     prompt: PullPromptResponse,
     user_id: str,
@@ -191,6 +217,7 @@ def get_agent(
     fetch_token_func: Optional[Callable[[str, str], Optional[str]]] = None,
     config: Optional[AgentConfig] = None,
     db_skills: Optional[List[SkillDB]] = None,
+    extra_tools: Optional[list] = None,
 ) -> Agent:
     agent_slug_id = prompt.name
     db_table_name = slug_to_table_name(f"a_{agent_slug_id}_agent")
@@ -346,6 +373,12 @@ def get_agent(
                 verbose=True,
             )
         )
+
+    # External MCP-server tools (an agent's worker_config.mcp_servers), already
+    # connected by the caller. Added to base_tools so the toolkit-selector pre-hook
+    # preserves them alongside the per-request Google/MS toolkits.
+    if extra_tools:
+        base_tools_list.extend(extra_tools)
 
     # Initialize toolkit selector if organizer_email and fetch_token_func are provided
     if organizer_email and fetch_token_func and user_id:
