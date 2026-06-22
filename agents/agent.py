@@ -278,6 +278,14 @@ def get_agent(
     # Extract available tools from tags (empty set means no optional toolkits)
     available_tools = extract_available_tools(prompt)
 
+    # Default the per-provider toolkit instances to None so they are always defined at
+    # the selector call below, regardless of the guard conditions. (Clears CodeQL
+    # py/uninitialized-local-variable, which can't prove the two identical guards align.)
+    calendar_google = calendar_microsoft = calendar_no_auth = None
+    contacts_google = contacts_microsoft = contacts_no_auth = None
+    drive_google = drive_microsoft = drive_no_auth = None
+    email_google = email_microsoft = email_no_auth = None
+
     # Initialize toolkit selector if organizer_email and fetch_token_func are provided
     if organizer_email and fetch_token_func and user_id:
         # Conditionally create toolkit instances based on available_tools tag
