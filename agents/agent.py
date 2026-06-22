@@ -1,7 +1,7 @@
 import json
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Callable, List, Optional
 
 from agno.agent import Agent
@@ -198,9 +198,28 @@ def build_mcp_toolkits(config: Optional[AgentConfig]) -> list:
 
     toolkits = []
     for server in http_servers:
-        params = StreamableHTTPClientParams(url=server.url, headers=(server.headers or None))
+        params = StreamableHTTPClientParams(
+            url=server.url,
+            headers=(server.headers or None),
+            # Explicit, cold-start-tolerant connect/request timeout (agno defaults to 30s);
+            # the target MCP server may be scale-to-zero and need a moment to wake.
+            timeout=timedelta(seconds=60),
+        )
         toolkits.append(MCPTools(server_params=params, transport="streamable-http"))
     return toolkits
+
+
+def ensure_mcp_ready(toolkits: list) -> None:
+    """Verify each connected MCP toolkit actually initialized with a non-empty tool set.
+
+    agno can swallow a cold-start / protocol failure and leave a toolkit with no tools;
+    the agent would then answer as if it used its tools when it didn't (e.g. "confirm" a
+    rule change that never persisted). Fail loud so the caller can surface a clear error.
+    """
+    for tk in toolkits:
+        if not getattr(tk, "_initialized", False) or not getattr(tk, "functions", None):
+            url = getattr(getattr(tk, "server_params", None), "url", "mcp-server")
+            raise RuntimeError(f"MCP tool server not ready (no tools loaded): {url}")
 
 
 def get_agent(

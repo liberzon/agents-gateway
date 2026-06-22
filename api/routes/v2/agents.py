@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from agents import Model
-from agents.agent import build_mcp_toolkits
+from agents.agent import build_mcp_toolkits, ensure_mcp_ready
 from agents.agent import get_agent as get_agent_impl
 from agents.agent import slug_to_table_name
 from agents.v2_selector import _get_prompt_from_local_storage
@@ -838,9 +838,21 @@ async def _mcp_chat_streamer(build_agent_fn, mcp_toolkits, body: "ChatRequest", 
     stays open for the whole stream because this generator runs after the route returns.
     """
     async with AsyncExitStack() as stack:
-        for toolkit in mcp_toolkits:
-            await stack.enter_async_context(toolkit)
-        agent = build_agent_fn(mcp_toolkits)
+        try:
+            for toolkit in mcp_toolkits:
+                await stack.enter_async_context(toolkit)
+            ensure_mcp_ready(mcp_toolkits)
+            agent = build_agent_fn(mcp_toolkits)
+        except Exception as e:
+            # The stream's status (200) is already sent, so surface a structured SSE
+            # error event (the route's try/except can't catch failures here — this
+            # generator runs after the route frame exits).
+            logging.error(f"MCP connect failed (streaming): {type(e).__name__}: {e}")
+            yield _format_sse_event(
+                "error",
+                {"status": "error", "error": f"MCP tool server unavailable: {type(e).__name__}: {e}"},
+            )
+            return
         async for event in chat_response_streamer_v2(agent, body, db):
             yield event
 
@@ -937,8 +949,16 @@ async def chat_with_agent_v2(agent_id: str, body: ChatRequest, db: Session = Dep
 
             logging.info(f"Processing v2 non-streaming request (MCP) for agent: {agent_id}")
             async with AsyncExitStack() as stack:
-                for toolkit in mcp_toolkits:
-                    await stack.enter_async_context(toolkit)
+                try:
+                    for toolkit in mcp_toolkits:
+                        await stack.enter_async_context(toolkit)
+                    ensure_mcp_ready(mcp_toolkits)
+                except Exception as e:
+                    logging.error(f"MCP connect failed (non-streaming): {type(e).__name__}: {e}")
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail=f"MCP tool server unavailable: {type(e).__name__}",
+                    )
                 mcp_agent = _build_mcp_agent(mcp_toolkits)
                 run_config = {
                     "knowledge_filters": (
