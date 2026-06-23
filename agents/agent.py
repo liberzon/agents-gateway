@@ -1,7 +1,7 @@
 import json
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Callable, List, Optional
 
 from agno.agent import Agent
@@ -179,6 +179,49 @@ def get_system_timezone() -> str:
     return "UTC"
 
 
+def build_mcp_toolkits(config: Optional[AgentConfig]) -> list:
+    """Build (unconnected) agno MCPTools from an agent's worker_config.mcp_servers.
+
+    Returns [] when no HTTP MCP servers are declared. `agno.tools.mcp` is imported
+    lazily so a missing `mcp` dependency only affects MCP-configured agents, not all
+    chat agents. The caller must connect each toolkit (async) before running the agent.
+    """
+    worker_config = getattr(config, "worker_config", None)
+    servers = list(getattr(worker_config, "mcp_servers", None) or []) if worker_config else []
+    http_servers = [
+        s for s in servers if getattr(s, "url", None) and getattr(s, "type", "") in ("http", "streamable-http")
+    ]
+    if not http_servers:
+        return []
+
+    from agno.tools.mcp import MCPTools, StreamableHTTPClientParams
+
+    toolkits = []
+    for server in http_servers:
+        params = StreamableHTTPClientParams(
+            url=server.url,
+            headers=(server.headers or None),
+            # Explicit, cold-start-tolerant connect/request timeout (agno defaults to 30s);
+            # the target MCP server may be scale-to-zero and need a moment to wake.
+            timeout=timedelta(seconds=60),
+        )
+        toolkits.append(MCPTools(server_params=params, transport="streamable-http"))
+    return toolkits
+
+
+def ensure_mcp_ready(toolkits: list) -> None:
+    """Verify each connected MCP toolkit actually initialized with a non-empty tool set.
+
+    agno can swallow a cold-start / protocol failure and leave a toolkit with no tools;
+    the agent would then answer as if it used its tools when it didn't (e.g. "confirm" a
+    rule change that never persisted). Fail loud so the caller can surface a clear error.
+    """
+    for tk in toolkits:
+        if not getattr(tk, "_initialized", False) or not getattr(tk, "functions", None):
+            url = getattr(getattr(tk, "server_params", None), "url", "mcp-server")
+            raise RuntimeError(f"MCP tool server not ready (no tools loaded): {url}")
+
+
 def get_agent(
     prompt: PullPromptResponse,
     user_id: str,
@@ -191,6 +234,7 @@ def get_agent(
     fetch_token_func: Optional[Callable[[str, str], Optional[str]]] = None,
     config: Optional[AgentConfig] = None,
     db_skills: Optional[List[SkillDB]] = None,
+    extra_tools: Optional[list] = None,
 ) -> Agent:
     agent_slug_id = prompt.name
     db_table_name = slug_to_table_name(f"a_{agent_slug_id}_agent")
@@ -233,6 +277,14 @@ def get_agent(
 
     # Extract available tools from tags (empty set means no optional toolkits)
     available_tools = extract_available_tools(prompt)
+
+    # Default the per-provider toolkit instances to None so they are always defined at
+    # the selector call below, regardless of the guard conditions. (Clears CodeQL
+    # py/uninitialized-local-variable, which can't prove the two identical guards align.)
+    calendar_google = calendar_microsoft = calendar_no_auth = None
+    contacts_google = contacts_microsoft = contacts_no_auth = None
+    drive_google = drive_microsoft = drive_no_auth = None
+    email_google = email_microsoft = email_no_auth = None
 
     # Initialize toolkit selector if organizer_email and fetch_token_func are provided
     if organizer_email and fetch_token_func and user_id:
@@ -346,6 +398,12 @@ def get_agent(
                 verbose=True,
             )
         )
+
+    # External MCP-server tools (an agent's worker_config.mcp_servers), already
+    # connected by the caller. Added to base_tools so the toolkit-selector pre-hook
+    # preserves them alongside the per-request Google/MS toolkits.
+    if extra_tools:
+        base_tools_list.extend(extra_tools)
 
     # Initialize toolkit selector if organizer_email and fetch_token_func are provided
     if organizer_email and fetch_token_func and user_id:
