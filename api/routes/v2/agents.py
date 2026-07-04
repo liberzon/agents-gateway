@@ -5,6 +5,7 @@ import os
 import time
 import uuid
 import zlib
+from contextlib import AsyncExitStack
 from threading import Lock
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
@@ -19,6 +20,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from agents import Model
+from agents.agent import build_mcp_toolkits, ensure_mcp_ready
 from agents.agent import get_agent as get_agent_impl
 from agents.agent import slug_to_table_name
 from agents.v2_selector import _get_prompt_from_local_storage
@@ -674,7 +676,11 @@ async def commit_response_streamer_v2(
 
             # Accumulate text and keep track of the latest metrics
             if "content" in event_data:
-                full_output_text += event_data["content"] if event_data["content"] else ""
+                # Only text content is part of the answer. Reasoning (and some other)
+                # events can carry a dict `content`; str-concatenating those raised
+                # "can only concatenate str (not dict) to str" and aborted the stream.
+                if isinstance(event_data["content"], str):
+                    full_output_text += event_data["content"]
                 if "metrics" in event_data:
                     last_metrics = Metrics(**event_data["metrics"])
 
@@ -799,7 +805,11 @@ async def chat_response_streamer_v2(agent: Agent, body: ChatRequest, db: Session
 
             # Accumulate text and keep track of the latest metrics
             if "content" in event_data:
-                full_output_text += event_data["content"] if event_data["content"] else ""
+                # Only text content is part of the answer. Reasoning (and some other)
+                # events can carry a dict `content`; str-concatenating those raised
+                # "can only concatenate str (not dict) to str" and aborted the stream.
+                if isinstance(event_data["content"], str):
+                    full_output_text += event_data["content"]
                 if "metrics" in event_data:
                     last_metrics = Metrics(**event_data["metrics"])
 
@@ -828,6 +838,32 @@ async def chat_response_streamer_v2(agent: Agent, body: ChatRequest, db: Session
                 agent=agent, input_text=body.message, output_text=full_output_text, metrics=last_metrics, db=db
             )
         logging.debug(f"Completed v2 streaming response with {chunk_count} chunks")
+
+
+async def _mcp_chat_streamer(build_agent_fn, mcp_toolkits, body: "ChatRequest", db: Session) -> AsyncGenerator:
+    """Stream an MCP-tool agent: connect the MCP session(s), build the agent with the
+    connected toolkits, then delegate to chat_response_streamer_v2. The AsyncExitStack
+    stays open for the whole stream because this generator runs after the route returns.
+    """
+    async with AsyncExitStack() as stack:
+        try:
+            for toolkit in mcp_toolkits:
+                await stack.enter_async_context(toolkit)
+            ensure_mcp_ready(mcp_toolkits)
+            agent = build_agent_fn(mcp_toolkits)
+        except Exception:
+            # The stream's status (200) is already sent, so surface a structured SSE
+            # error event (the route's try/except can't catch failures here — this
+            # generator runs after the route frame exits). Log the detail server-side
+            # only; the client gets a generic message (no exception data leaked).
+            logging.error("MCP connect failed (streaming)", exc_info=True)
+            yield _format_sse_event(
+                "error",
+                {"status": "error", "error": "MCP tool server unavailable"},
+            )
+            return
+        async for event in chat_response_streamer_v2(agent, body, db):
+            yield event
 
 
 async def get_agent(
@@ -891,6 +927,92 @@ async def chat_with_agent_v2(agent_id: str, body: ChatRequest, db: Session = Dep
         agent, prompt_data, cache_key, agent_config = await get_agent(
             db, agent_id, body.model, body.user_id, body.session_id
         )
+
+        # MCP-tool agents (config.worker_config.mcp_servers): build a fresh agent per
+        # request and run it inside the live MCP session(s). We bypass the agent cache
+        # because the agno MCP toolkit holds a connection that isn't safe to reuse across
+        # requests. Non-MCP agents fall through to the cached path below, unchanged.
+        mcp_toolkits = build_mcp_toolkits(agent_config)
+        if mcp_toolkits:
+
+            def _build_mcp_agent(connected_toolkits):
+                return get_agent_impl(
+                    prompt=prompt_data,
+                    model_id=body.model.value,
+                    user_id=body.user_id,
+                    session_id=body.session_id,
+                    organizer_email=body.user_profile.email if body.user_profile else "",
+                    fetch_token_func=fetch_access_token,
+                    tenant_id=body.tenant_profile.tenant_id if body.tenant_profile else "default_tenant",
+                    timezone=body.timezone,
+                    config=agent_config,
+                    extra_tools=connected_toolkits,
+                )
+
+            if body.stream:
+                logging.info(f"Returning v2 streaming response (MCP) for agent: {agent_id}")
+                return StreamingResponse(
+                    _mcp_chat_streamer(_build_mcp_agent, mcp_toolkits, body, db),
+                    media_type="text/event-stream",
+                )
+
+            logging.info(f"Processing v2 non-streaming request (MCP) for agent: {agent_id}")
+            async with AsyncExitStack() as stack:
+                try:
+                    for toolkit in mcp_toolkits:
+                        await stack.enter_async_context(toolkit)
+                    ensure_mcp_ready(mcp_toolkits)
+                except Exception:
+                    logging.error("MCP connect failed (non-streaming)", exc_info=True)
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="MCP tool server unavailable",
+                    )
+                mcp_agent = _build_mcp_agent(mcp_toolkits)
+                run_config = {
+                    "knowledge_filters": (
+                        {"meta_data.tenant_id": body.tenant_profile.tenant_id} if body.tenant_profile else None
+                    ),
+                    "session_state": {
+                        "user_name": body.user_profile.full_name if body.user_profile else None,
+                        "user_profile_json": body.user_profile.model_dump_json() if body.user_profile else None,
+                        "timezone": body.timezone,
+                        "locale": body.locale,
+                    },
+                }
+                response = await mcp_agent.arun(body.message, stream=False, **run_config)
+                if hasattr(response, "run_id") and response.run_id:
+                    _run_cache[response.run_id] = response
+                tools_dict = []
+                if hasattr(response, "tools") and response.tools:
+                    for tool in response.tools:
+                        tools_dict.append(
+                            {
+                                "tool_call_id": getattr(tool, "tool_call_id", None),
+                                "tool_name": getattr(tool, "tool_name", None),
+                                "requires_confirmation": getattr(tool, "requires_confirmation", False),
+                                "tool_args": getattr(tool, "tool_args", None),
+                                "result": _parse_result(getattr(tool, "result", None)),
+                            }
+                        )
+                if hasattr(response, "content"):
+                    store_token_usage(
+                        agent=mcp_agent,
+                        input_text=body.message,
+                        output_text=response.content,
+                        metrics=response.metrics if hasattr(response, "metrics") else None,
+                        db=db,
+                    )
+                return ChatResponse(
+                    content=response.content if hasattr(response, "content") else None,
+                    agent_id=agent_id,
+                    session_id=body.session_id,
+                    model=body.model,
+                    status=response.status,
+                    run_id=response.run_id if hasattr(response, "run_id") else None,
+                    tools=tools_dict,
+                )
+
         if not agent:
             logging.info(f"Creating new agent for {cache_key}")
 
