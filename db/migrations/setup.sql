@@ -175,8 +175,8 @@ CREATE TABLE IF NOT EXISTS token_usage (
     session_id VARCHAR(255),
     user_id VARCHAR(255),
     model VARCHAR(100),
-    input_tokens INTEGER DEFAULT 0,
-    output_tokens INTEGER DEFAULT 0,
+    prompt_tokens INTEGER DEFAULT 0,
+    completion_tokens INTEGER DEFAULT 0,
     total_tokens INTEGER DEFAULT 0,
     is_estimated BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()

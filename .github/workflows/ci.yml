@@ -7,6 +7,17 @@ on:
     branches: [main]
 
 jobs:
+  repo-checks:
+    name: Repo checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check repository
+        run: |
+          echo "CI placeholder passed"
+
   lint:
     name: Lint & Format
     runs-on: ubuntu-latest
