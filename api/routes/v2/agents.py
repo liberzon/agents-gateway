@@ -676,7 +676,11 @@ async def commit_response_streamer_v2(
 
             # Accumulate text and keep track of the latest metrics
             if "content" in event_data:
-                full_output_text += event_data["content"] if event_data["content"] else ""
+                # Only text content is part of the answer. Reasoning (and some other)
+                # events can carry a dict `content`; str-concatenating those raised
+                # "can only concatenate str (not dict) to str" and aborted the stream.
+                if isinstance(event_data["content"], str):
+                    full_output_text += event_data["content"]
                 if "metrics" in event_data:
                     last_metrics = Metrics(**event_data["metrics"])
 
@@ -801,7 +805,11 @@ async def chat_response_streamer_v2(agent: Agent, body: ChatRequest, db: Session
 
             # Accumulate text and keep track of the latest metrics
             if "content" in event_data:
-                full_output_text += event_data["content"] if event_data["content"] else ""
+                # Only text content is part of the answer. Reasoning (and some other)
+                # events can carry a dict `content`; str-concatenating those raised
+                # "can only concatenate str (not dict) to str" and aborted the stream.
+                if isinstance(event_data["content"], str):
+                    full_output_text += event_data["content"]
                 if "metrics" in event_data:
                     last_metrics = Metrics(**event_data["metrics"])
 
