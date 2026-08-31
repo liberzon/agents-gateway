@@ -46,7 +46,7 @@ def get_available_agents(db: Optional[Session] = None) -> List[str]:
 
 
 def get_agent(
-    model_id: str = Model.gemini_2_5_pro,
+    model_id: str = Model.gemini_3_flash,
     agent_id: Optional[str] = None,
     user_id: Optional[str] = None,
     session_id: Optional[str] = None,

@@ -49,7 +49,7 @@ AVAILABLE_TEAMS = {
 USER_ID = os.getenv("USER_ID", "3dda8c97-9786-472a-b636-b52b3f3dbf8a")
 SESSION_ID = os.getenv("SESSION_ID", str(uuid.uuid4()))
 STREAM_FLAG = os.getenv("CHAT_STREAM", "true").lower() in ("1", "true", "yes")
-DEFAULT_MODEL = os.getenv("CHAT_MODEL", "gemini-2.5-pro")
+DEFAULT_MODEL = os.getenv("CHAT_MODEL", "gemini-3-flash-preview")
 
 # History file location
 HISTORY_FILE = Path.home() / ".team_history"
@@ -61,7 +61,7 @@ CONFIG_FILE = Path.home() / ".team_cli"
 AVAILABLE_MODELS = [
     "gemini-2.5-pro",
     "gemini-2.5-flash",
-    "gemini-2.5-flash-light",
+    "gemini-2.5-flash-lite",
 ]
 
 

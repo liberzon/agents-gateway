@@ -518,7 +518,11 @@ class ChatRequest(BaseModel):
 
     message: str
     stream: bool = True
-    model: Model = Model.gemini_2_5_pro
+    # Default when a caller omits `model`. gemini-2.5-pro has been retired by Google and
+    # now returns 404 NOT_FOUND; its suggested successor gemini-3.1-pro-preview requires
+    # pro-tier quota and 429s where that is not provisioned. gemini-3-flash-preview is
+    # broadly available, so it is the safe default. A caller can always pass `model`.
+    model: Model = Model.gemini_3_flash
     user_id: str
     session_id: str
     temperature: Optional[float] = None
@@ -537,7 +541,7 @@ class CommitRequest(BaseModel):
 
     run_id: str
     stream: bool = True
-    model: Model = Model.gemini_2_5_pro
+    model: Model = Model.gemini_3_flash  # see ChatRequest
     user_id: str
     session_id: str
     updated_tools: List[Dict[str, Any]]
@@ -550,7 +554,7 @@ class ChatResponse(BaseModel):
     content: Optional[str] = None
     agent_id: str
     session_id: Optional[str] = None
-    model: Model = Model.gemini_2_5_pro
+    model: Model = Model.gemini_3_flash
     token_usage: Optional[dict] = None
     status: Optional[str] = None
     run_id: Optional[str] = None
@@ -1580,7 +1584,7 @@ async def run_toolkit_method_v2(
     user_id: str,
     session_id: str,
     organizer_email: Optional[str] = None,
-    model: Model = Model.gemini_2_5_pro,
+    model: Model = Model.gemini_3_flash,
     skip_confirmation: bool = False,
     db: Session = Depends(get_db),
 ):

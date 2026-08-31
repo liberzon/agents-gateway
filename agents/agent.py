@@ -229,7 +229,7 @@ def get_agent(
     organizer_email: str,
     tenant_id: str,
     timezone: str = "UTC",
-    model_id: str = Model.gemini_2_5_pro,
+    model_id: str = Model.gemini_3_flash,
     debug_mode: Optional[bool] = None,
     fetch_token_func: Optional[Callable[[str, str], Optional[str]]] = None,
     config: Optional[AgentConfig] = None,

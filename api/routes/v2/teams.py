@@ -104,7 +104,7 @@ class TeamRunRequest(BaseModel):
     message: str
     stream: bool = True
     stream_verbosity: str = "events"  # full, events, result
-    model: Model = Model.gemini_2_5_pro
+    model: Model = Model.gemini_3_flash
     user_id: Optional[str] = None
     session_id: Optional[str] = None
 
@@ -140,7 +140,7 @@ class TeamCommitRequest(BaseModel):
 
     run_id: str
     stream: bool = True
-    model: Model = Model.gemini_2_5_pro
+    model: Model = Model.gemini_3_flash
     user_id: Optional[str] = None
     session_id: Optional[str] = None
     updated_tools: List[Dict[str, Any]]
