@@ -1495,3 +1495,9 @@ class TestParseResult(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_log_safe_strips_crlf():
+    from api.routes.v2.agents import _log_safe
+
+    assert _log_safe("abc:agent:user\r\nFAKE LOG LINE") == "abc:agent:userFAKE LOG LINE"

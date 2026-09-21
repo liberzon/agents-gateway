@@ -158,6 +158,11 @@ def estimate_tokens(text: str) -> int:
     return int(len(text) / 4)
 
 
+def _log_safe(value: object) -> str:
+    """Strip CR/LF so request-derived values (agent/user/session ids) can't forge log lines."""
+    return str(value).replace("\r", "").replace("\n", "")
+
+
 def compute_cache_key(prompt_template: str, agent_id: str, model: Model, user_id: str, session_id: str) -> str:
     """
     Compute CRC32-based cache key for agent caching.
@@ -896,14 +901,14 @@ async def get_agent(
         )
     # Compute CRC32 cache key
     cache_key = compute_cache_key(prompt_data.template, agent_id, model, user_id, session_id)
-    logging.debug(f"Computed cache key for agent {agent_id}: {cache_key}")
+    logging.debug(f"Computed cache key for agent {_log_safe(agent_id)}: {_log_safe(cache_key)}")
     # Get agent config from database
     agent_config = get_agent_config(db_agent)
     # Get or create cached agent
     agent: Optional[Agent] = None
     with _cache_lock:
         if cache_key in _agent_cache:
-            logging.debug(f"Using cached agent for {cache_key}")
+            logging.debug(f"Using cached agent for {_log_safe(cache_key)}")
             agent = _agent_cache[cache_key]
     return agent, prompt_data, cache_key, agent_config
 
@@ -1016,7 +1021,7 @@ async def chat_with_agent_v2(agent_id: str, body: ChatRequest, db: Session = Dep
                 )
 
         if not agent:
-            logging.info(f"Creating new agent for {cache_key}")
+            logging.info(f"Creating new agent for {_log_safe(cache_key)}")
 
             agent = get_agent_impl(
                 prompt=prompt_data,
@@ -1030,7 +1035,7 @@ async def chat_with_agent_v2(agent_id: str, body: ChatRequest, db: Session = Dep
                 config=agent_config,
             )
             _agent_cache[cache_key] = agent
-            logging.info(f"Agent cached with key: {cache_key}")
+            logging.info(f"Agent cached with key: {_log_safe(cache_key)}")
 
         # Execute agent run
         if body.stream:
