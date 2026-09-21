@@ -54,7 +54,7 @@ ORG_ID = os.getenv("USER_ID", "44a99f99-e673-42fd-ba34-31bc1005d641")
 
 SESSION_ID = os.getenv("SESSION_ID", str(uuid.uuid4()))
 STREAM_FLAG = os.getenv("CHAT_STREAM", "false").lower() in ("1", "true", "yes")
-DEFAULT_MODEL = os.getenv("CHAT_MODEL", "gemini-2.5-pro")
+DEFAULT_MODEL = os.getenv("CHAT_MODEL", "gemini-3-flash-preview")
 
 # History file location
 HISTORY_FILE = Path.home() / ".agent_history"
@@ -66,7 +66,7 @@ CONFIG_FILE = Path.home() / ".agent_cli"
 AVAILABLE_MODELS = [
     "gemini-2.5-pro",
     "gemini-2.5-flash",
-    "gemini-2.5-flash-light",
+    "gemini-2.5-flash-lite",
 ]
 
 

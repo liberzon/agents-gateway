@@ -19,7 +19,7 @@ from google.genai.types import File
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from agents import Model
+from agents import DEFAULT_MODEL, Model
 from agents.agent import build_mcp_toolkits, ensure_mcp_ready
 from agents.agent import get_agent as get_agent_impl
 from agents.agent import slug_to_table_name
@@ -156,6 +156,11 @@ def estimate_tokens(text: str) -> int:
     """
     # Rough heuristic: average 3–4 characters per token in English
     return int(len(text) / 4)
+
+
+def _log_safe(value: object) -> str:
+    """Strip CR/LF so request-derived values (agent/user/session ids) can't forge log lines."""
+    return str(value).replace("\r", "").replace("\n", "")
 
 
 def compute_cache_key(prompt_template: str, agent_id: str, model: Model, user_id: str, session_id: str) -> str:
@@ -518,7 +523,9 @@ class ChatRequest(BaseModel):
 
     message: str
     stream: bool = True
-    model: Model = Model.gemini_2_5_pro
+    # Default when a caller omits `model`: the DEFAULT_CHAT_MODEL env var, else
+    # gemini-3-flash-preview (see agents.DEFAULT_MODEL). A caller can always pass `model`.
+    model: Model = DEFAULT_MODEL
     user_id: str
     session_id: str
     temperature: Optional[float] = None
@@ -537,7 +544,7 @@ class CommitRequest(BaseModel):
 
     run_id: str
     stream: bool = True
-    model: Model = Model.gemini_2_5_pro
+    model: Model = DEFAULT_MODEL  # see ChatRequest
     user_id: str
     session_id: str
     updated_tools: List[Dict[str, Any]]
@@ -550,7 +557,7 @@ class ChatResponse(BaseModel):
     content: Optional[str] = None
     agent_id: str
     session_id: Optional[str] = None
-    model: Model = Model.gemini_2_5_pro
+    model: Model = DEFAULT_MODEL
     token_usage: Optional[dict] = None
     status: Optional[str] = None
     run_id: Optional[str] = None
@@ -894,14 +901,14 @@ async def get_agent(
         )
     # Compute CRC32 cache key
     cache_key = compute_cache_key(prompt_data.template, agent_id, model, user_id, session_id)
-    logging.debug(f"Computed cache key for agent {agent_id}: {cache_key}")
+    logging.debug(f"Computed cache key for agent {_log_safe(agent_id)}: {_log_safe(cache_key)}")
     # Get agent config from database
     agent_config = get_agent_config(db_agent)
     # Get or create cached agent
     agent: Optional[Agent] = None
     with _cache_lock:
         if cache_key in _agent_cache:
-            logging.debug(f"Using cached agent for {cache_key}")
+            logging.debug(f"Using cached agent for {_log_safe(cache_key)}")
             agent = _agent_cache[cache_key]
     return agent, prompt_data, cache_key, agent_config
 
@@ -1014,7 +1021,7 @@ async def chat_with_agent_v2(agent_id: str, body: ChatRequest, db: Session = Dep
                 )
 
         if not agent:
-            logging.info(f"Creating new agent for {cache_key}")
+            logging.info(f"Creating new agent for {_log_safe(cache_key)}")
 
             agent = get_agent_impl(
                 prompt=prompt_data,
@@ -1028,7 +1035,7 @@ async def chat_with_agent_v2(agent_id: str, body: ChatRequest, db: Session = Dep
                 config=agent_config,
             )
             _agent_cache[cache_key] = agent
-            logging.info(f"Agent cached with key: {cache_key}")
+            logging.info(f"Agent cached with key: {_log_safe(cache_key)}")
 
         # Execute agent run
         if body.stream:
@@ -1580,7 +1587,7 @@ async def run_toolkit_method_v2(
     user_id: str,
     session_id: str,
     organizer_email: Optional[str] = None,
-    model: Model = Model.gemini_2_5_pro,
+    model: Model = DEFAULT_MODEL,
     skip_confirmation: bool = False,
     db: Session = Depends(get_db),
 ):

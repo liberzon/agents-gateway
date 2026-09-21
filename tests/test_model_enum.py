@@ -1,5 +1,7 @@
 import unittest
 
+import pytest
+
 from agents import Model, ModelProvider, get_provider
 
 
@@ -233,3 +235,37 @@ class TestModelEnum(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDefaultModel:
+    """DEFAULT_CHAT_MODEL env var drives the chat default (agents.DEFAULT_MODEL)."""
+
+    def test_falls_back_to_gemini_3_flash_when_unset(self, monkeypatch):
+        from agents import _default_model
+
+        monkeypatch.delenv("DEFAULT_CHAT_MODEL", raising=False)
+        assert _default_model() is Model.gemini_3_flash
+
+    def test_reads_env_var(self, monkeypatch):
+        from agents import _default_model
+
+        monkeypatch.setenv("DEFAULT_CHAT_MODEL", "claude-sonnet-4-6")
+        assert _default_model() is Model.claude_sonnet_4_6
+
+    def test_blank_env_var_uses_fallback(self, monkeypatch):
+        from agents import _default_model
+
+        monkeypatch.setenv("DEFAULT_CHAT_MODEL", "  ")
+        assert _default_model() is Model.gemini_3_flash
+
+    def test_unknown_value_fails_fast(self, monkeypatch):
+        from agents import _default_model
+
+        monkeypatch.setenv("DEFAULT_CHAT_MODEL", "gemini-2.5-prp")
+        with pytest.raises(ValueError, match="DEFAULT_CHAT_MODEL"):
+            _default_model()
+
+    def test_default_is_never_the_retired_model(self):
+        from agents import DEFAULT_MODEL
+
+        assert DEFAULT_MODEL is not Model.gemini_2_5_pro

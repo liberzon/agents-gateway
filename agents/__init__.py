@@ -1,3 +1,4 @@
+import os
 from enum import Enum
 
 
@@ -40,4 +41,25 @@ def get_provider(model: Model) -> ModelProvider:
     raise ValueError(f"Unknown provider for: {model_value}")
 
 
-__all__ = ["Model", "ModelProvider", "get_provider"]
+def _default_model() -> Model:
+    """Model used when a chat request omits `model`.
+
+    Set via the DEFAULT_CHAT_MODEL env var so the deployed default is visible in (and
+    changeable from) the deployment config without a code release. Falls back to
+    gemini-3-flash-preview: gemini-2.5-pro was retired by Google (404 NOT_FOUND) and
+    gemini-3.1-pro-preview needs pro-tier quota (429 where not provisioned). An unknown
+    value fails fast at startup rather than 422-ing every chat that omits `model`.
+    """
+    raw = os.getenv("DEFAULT_CHAT_MODEL", "").strip()
+    if not raw:
+        return Model.gemini_3_flash
+    try:
+        return Model(raw)
+    except ValueError:
+        valid = ", ".join(m.value for m in Model)
+        raise ValueError(f"DEFAULT_CHAT_MODEL={raw!r} is not a known model; expected one of: {valid}") from None
+
+
+DEFAULT_MODEL = _default_model()
+
+__all__ = ["DEFAULT_MODEL", "Model", "ModelProvider", "get_provider"]

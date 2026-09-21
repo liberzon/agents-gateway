@@ -14,7 +14,7 @@ from agno.skills.skill import Skill as AgnoSkill
 from agno.tools.brightdata import BrightDataTools
 from agno.tools.user_control_flow import UserControlFlowTools
 
-from agents import Model
+from agents import DEFAULT_MODEL
 from agents.model_factory import create_model
 from agents.toolkit_selector import create_datetime_resolver_tool, create_multi_toolkit_selector
 from api.services.knowledge_service import get_knowledge_service
@@ -229,7 +229,7 @@ def get_agent(
     organizer_email: str,
     tenant_id: str,
     timezone: str = "UTC",
-    model_id: str = Model.gemini_2_5_pro,
+    model_id: str = DEFAULT_MODEL,
     debug_mode: Optional[bool] = None,
     fetch_token_func: Optional[Callable[[str, str], Optional[str]]] = None,
     config: Optional[AgentConfig] = None,
