@@ -11,7 +11,7 @@ from typing import Callable, List, Optional
 
 from sqlalchemy.orm import Session
 
-from agents import Model
+from agents import DEFAULT_MODEL
 from agents.agent import get_agent as get_agent_impl
 from api.services.models import PullPromptResponse
 from api.services.prompts_client import prompts_client
@@ -46,7 +46,7 @@ def get_available_agents(db: Optional[Session] = None) -> List[str]:
 
 
 def get_agent(
-    model_id: str = Model.gemini_3_flash,
+    model_id: str = DEFAULT_MODEL,
     agent_id: Optional[str] = None,
     user_id: Optional[str] = None,
     session_id: Optional[str] = None,

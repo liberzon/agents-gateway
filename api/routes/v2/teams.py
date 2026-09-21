@@ -14,7 +14,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from agents import Model
+from agents import DEFAULT_MODEL, Model
 from agents.v2_selector import get_agent
 from api.routes.v2.agents import TenantProfile, UserProfile
 from api.services.access_token import fetch_access_token
@@ -104,7 +104,7 @@ class TeamRunRequest(BaseModel):
     message: str
     stream: bool = True
     stream_verbosity: str = "events"  # full, events, result
-    model: Model = Model.gemini_3_flash
+    model: Model = DEFAULT_MODEL
     user_id: Optional[str] = None
     session_id: Optional[str] = None
 
@@ -140,7 +140,7 @@ class TeamCommitRequest(BaseModel):
 
     run_id: str
     stream: bool = True
-    model: Model = Model.gemini_3_flash
+    model: Model = DEFAULT_MODEL
     user_id: Optional[str] = None
     session_id: Optional[str] = None
     updated_tools: List[Dict[str, Any]]
