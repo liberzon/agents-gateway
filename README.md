@@ -77,6 +77,25 @@ curl -X POST http://localhost:8000/v2/agents/demo-assistant/chat \
   }'
 ```
 
+#### Choosing a model
+
+A chat request may name a `model`; otherwise the gateway uses `DEFAULT_CHAT_MODEL`
+(env), else `gemini-3-flash-preview`. Besides pinned ids (`claude-sonnet-4-6`,
+`gpt-5.4`, ...), `model` accepts a **latest-of-a-tier alias** that follows the vendor's
+newest model in that tier without a code change, and never moves to a pricier tier:
+
+| Vendor | Aliases |
+|---|---|
+| Anthropic | `anthropic:haiku-latest`, `anthropic:sonnet-latest`, `anthropic:opus-latest` |
+| OpenAI | `openai:luna-latest`, `openai:terra-latest`, `openai:sol-latest` |
+| Google | `google:flash-latest`, `google:pro-latest` |
+
+The gateway resolves an alias by listing the vendor's models through its SDK and
+taking the newest one in the tier (`agents/model_resolver.py`), caches the answer
+for a day, and falls back to a known model for the tier if the vendor can't be
+asked. The resolution is logged (`Model alias anthropic:sonnet-latest -> ...`).
+For example, `DEFAULT_CHAT_MODEL=anthropic:sonnet-latest`.
+
 ### 4. Stop services
 
 ```sh

@@ -4,6 +4,7 @@ from agno.models.google import Gemini
 from agno.models.openai import OpenAIChat
 
 from agents import Model, ModelProvider, get_provider
+from agents.model_resolver import resolve_model_id
 
 
 def create_model(
@@ -19,7 +20,9 @@ def create_model(
     Factory function to create the appropriate Agno model instance.
 
     Args:
-        model: The Model enum value or model ID string specifying which model to use
+        model: The Model enum value or model ID string specifying which model to use.
+            A tier alias (e.g. "anthropic:sonnet-latest") is resolved to the vendor's
+            newest model in that tier; a vendor model id is used as-is.
         openai_api_key: OpenAI API key (required for OpenAI models)
         gemini_api_key: Gemini API key (required for Gemini models)
         anthropic_api_key: Anthropic API key (required for Claude models)
@@ -33,12 +36,8 @@ def create_model(
         ValueError: If the provider is unknown or required API key is missing
         ImportError: If anthropic package is not installed (for Claude models)
     """
-    # Convert string to Model enum if needed
-    if isinstance(model, str):
-        model = Model(model)
-
-    provider = get_provider(model)
-    model_id = model.value
+    model_id = resolve_model_id(model)
+    provider = get_provider(model_id)
 
     if provider == ModelProvider.OPENAI:
         if not openai_api_key:

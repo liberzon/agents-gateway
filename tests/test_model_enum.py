@@ -57,7 +57,7 @@ class TestModelEnum(unittest.TestCase):
     def test_model_enum_membership(self):
         """Test enum membership and iteration."""
         all_models = list(Model)
-        self.assertEqual(len(all_models), 11)
+        self.assertEqual(len(all_models), 19)
 
         expected_values = [
             "gpt-5.4",
@@ -71,6 +71,15 @@ class TestModelEnum(unittest.TestCase):
             "claude-opus-4-6",
             "claude-sonnet-4-6",
             "claude-haiku-4-5-20251001",
+            # latest-of-a-tier aliases
+            "anthropic:haiku-latest",
+            "anthropic:sonnet-latest",
+            "anthropic:opus-latest",
+            "openai:luna-latest",
+            "openai:terra-latest",
+            "openai:sol-latest",
+            "google:flash-latest",
+            "google:pro-latest",
         ]
 
         enum_values = [model.value for model in Model]

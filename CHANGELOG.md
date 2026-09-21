@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Testcontainers for integration testing
 - Agent CLI and Team CLI tools
 - V2 prompts API routes (`/v2/prompts`)
+- Latest-of-a-tier model aliases (`anthropic:sonnet-latest`, `openai:terra-latest`, `google:flash-latest`, ...), resolved from each vendor's models API, cached daily, with a per-tier fallback; usable as a request `model` or as `DEFAULT_CHAT_MODEL`
 
 ### Changed
 - Renamed project from `agent-api` to `agents-gateway`

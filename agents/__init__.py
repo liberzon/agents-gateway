@@ -1,5 +1,6 @@
 import os
 from enum import Enum
+from typing import Union
 
 
 class Model(str, Enum):
@@ -22,6 +23,18 @@ class Model(str, Enum):
     claude_sonnet_4_6 = "claude-sonnet-4-6"
     claude_haiku_4_5 = "claude-haiku-4-5-20251001"
 
+    # ===== Latest of a tier (resolved per vendor, see agents/model_resolver.py) =====
+    # Follow the vendor's newest model in a tier without a code change, never jumping
+    # to a pricier tier. Prefer these over the pinned ids above for defaults.
+    anthropic_haiku_latest = "anthropic:haiku-latest"
+    anthropic_sonnet_latest = "anthropic:sonnet-latest"
+    anthropic_opus_latest = "anthropic:opus-latest"
+    openai_luna_latest = "openai:luna-latest"
+    openai_terra_latest = "openai:terra-latest"
+    openai_sol_latest = "openai:sol-latest"
+    google_flash_latest = "google:flash-latest"
+    google_pro_latest = "google:pro-latest"
+
 
 class ModelProvider(str, Enum):
     OPENAI = "openai"
@@ -29,14 +42,14 @@ class ModelProvider(str, Enum):
     ANTHROPIC = "anthropic"
 
 
-def get_provider(model: Model) -> ModelProvider:
-    """Determine provider from model enum."""
-    model_value = model.value
-    if model_value.startswith("gpt-"):
+def get_provider(model: Union[Model, str]) -> ModelProvider:
+    """Determine provider from a Model enum member, a tier alias, or a vendor model id."""
+    model_value = model.value if isinstance(model, Model) else str(model)
+    if model_value.startswith(("gpt-", "openai:")):
         return ModelProvider.OPENAI
-    elif model_value.startswith("gemini-"):
+    elif model_value.startswith(("gemini-", "google:")):
         return ModelProvider.GEMINI
-    elif model_value.startswith("claude-"):
+    elif model_value.startswith(("claude-", "anthropic:")):
         return ModelProvider.ANTHROPIC
     raise ValueError(f"Unknown provider for: {model_value}")
 

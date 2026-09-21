@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from agents import DEFAULT_MODEL, Model
+from agents.model_resolver import resolve_model_id
 from agents.v2_selector import get_agent
 from api.routes.v2.agents import TenantProfile, UserProfile
 from api.services.access_token import fetch_access_token
@@ -449,7 +450,7 @@ def create_team(
 
     # Create MemoryManager
     memory_manager = MemoryManager(
-        model=Gemini(id=model_id, api_key=api_settings.gemini_api_key),
+        model=Gemini(id=resolve_model_id(model_id), api_key=api_settings.gemini_api_key),
         db=db_instance,
         delete_memories=True,
         clear_memories=True,
@@ -491,7 +492,7 @@ def create_team(
         session_id=session_id,
         members=members,
         mode=TeamMode.coordinate,
-        model=Gemini(id=model_id, api_key=api_settings.gemini_api_key),
+        model=Gemini(id=resolve_model_id(model_id), api_key=api_settings.gemini_api_key),
         compress_tool_results=True,
         enable_agentic_state=True,
         add_datetime_to_context=True,
