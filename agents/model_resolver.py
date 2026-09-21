@@ -33,6 +33,10 @@ class Tier:
     name: str
     fallback: str  # used when the vendor can't be asked
 
+    @property
+    def alias(self) -> str:
+        return f"{self.vendor}:{self.name}-latest"
+
 
 # alias -> tier. The alias is the Model enum value callers send.
 TIERS: Dict[str, Tier] = {
@@ -177,10 +181,12 @@ class ModelResolver:
             if found:
                 self._cache[model_id] = (found, now + RESOLVE_TTL_SECONDS)
                 if not cached or cached[0] != found:
-                    logger.info("Model alias %s -> %s", model_id, found)
+                    # Log the tier's own name, never the caller's string: model_id can
+                    # come from a request body (log injection).
+                    logger.info("Model alias %s -> %s", tier.alias, found)
                 return found
             stale_or_fallback = cached[0] if cached else tier.fallback
-            logger.warning("Could not resolve %s (%s); using %s", model_id, reason, stale_or_fallback)
+            logger.warning("Could not resolve %s (%s); using %s", tier.alias, reason, stale_or_fallback)
             self._cache[model_id] = (stale_or_fallback, now + RETRY_AFTER_SECONDS)
             return stale_or_fallback
 

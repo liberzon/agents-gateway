@@ -130,6 +130,15 @@ class TestModelResolver(unittest.TestCase):
 
         self.assertEqual(self.resolver.resolve("anthropic:sonnet-latest"), "claude-sonnet-5")
 
+    def test_the_log_names_the_tier_not_the_callers_string(self):
+        with self.assertLogs("agents.model_resolver", level="INFO") as logs:
+            self.resolver.resolve("anthropic:sonnet-latest")
+        self.assertIn("Model alias anthropic:sonnet-latest -> claude-sonnet-5", logs.output[0])
+
+    def test_every_tier_alias_matches_its_key(self):
+        for alias, tier in TIERS.items():
+            self.assertEqual(tier.alias, alias)
+
     def test_every_alias_is_a_model_and_every_fallback_is_a_concrete_id_of_its_vendor(self):
         prefixes = {"anthropic": "claude-", "openai": "gpt-", "google": "gemini-"}
         for alias, tier in TIERS.items():
