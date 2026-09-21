@@ -23,6 +23,7 @@ from agents import DEFAULT_MODEL, Model
 from agents.agent import build_mcp_toolkits, ensure_mcp_ready
 from agents.agent import get_agent as get_agent_impl
 from agents.agent import slug_to_table_name
+from agents.model_resolver import resolve_model_id
 from agents.v2_selector import _get_prompt_from_local_storage
 from api.services.access_token import fetch_access_token, has_access_tokens_batch  # noqa: F401
 from api.services.models import PullPromptResponse
@@ -178,7 +179,9 @@ def compute_cache_key(prompt_template: str, agent_id: str, model: Model, user_id
         Cache key string: "crc32_hash:agent_id:model_id"
     """
     crc32_hash = zlib.crc32(prompt_template.encode("utf-8")) & 0xFFFFFFFF
-    return f"{crc32_hash}:{agent_id}:{model.value}:{user_id}:{session_id}"
+    # The resolved id, not the alias: when "anthropic:sonnet-latest" moves to a newer
+    # model, a cached agent built on the old one must not keep being served.
+    return f"{crc32_hash}:{agent_id}:{resolve_model_id(model)}:{user_id}:{session_id}"
 
 
 def store_token_usage(
