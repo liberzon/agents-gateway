@@ -1,6 +1,7 @@
 import copy
 import json
 import logging
+from functools import lru_cache
 from threading import Lock
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
@@ -23,6 +24,7 @@ from api.services.knowledge_service import get_knowledge_service
 from api.settings import api_settings
 from db.agent_info_crud import get_agent_info
 from db.db_models import TokenUsage
+from db.session import db_engine
 
 # Database models imported but not directly used - accessed via CRUD functions
 from db.session import get_db
@@ -387,6 +389,16 @@ def store_token_usage_team(
 ######################################################
 
 
+@lru_cache(maxsize=None)
+def get_team_db(session_table: Optional[str] = None, memory_table: Optional[str] = None) -> PostgresDb:
+    """Team storage on the SHARED engine (db.session), cached per table pair.
+
+    A PostgresDb per call opens its own connection pool; Supabase's session pooler
+    allows 15 clients in total, so that exhausted it (see db/session.py).
+    """
+    return PostgresDb(db_engine=db_engine, session_table=session_table, memory_table=memory_table)
+
+
 def get_team_storage(team_id: str, db_url: str) -> PostgresDb:
     """
     Get PostgresDb instance for a team.
@@ -398,7 +410,7 @@ def get_team_storage(team_id: str, db_url: str) -> PostgresDb:
     Returns:
         PostgresDb: Storage instance for the team
     """
-    return PostgresDb(db_url=db_url, session_table=f"t_{team_id}_s")
+    return get_team_db(session_table=f"t_{team_id}_s")
 
 
 def get_team_memory_db(team_id: str, db_url: str) -> PostgresDb:
@@ -412,7 +424,7 @@ def get_team_memory_db(team_id: str, db_url: str) -> PostgresDb:
     Returns:
         PostgresDb: Memory database instance for the team
     """
-    return PostgresDb(db_url=db_url, memory_table=f"t_{team_id}_m")
+    return get_team_db(memory_table=f"t_{team_id}_m")
 
 
 def create_team(
@@ -442,11 +454,7 @@ def create_team(
         Team: Configured Agno team instance
     """
     # Create PostgresDb instance for team storage and memory
-    db_instance = PostgresDb(
-        db_url=db_url,
-        session_table=f"t_{team_id}_s",
-        memory_table=f"t_{team_id}_m",
-    )
+    db_instance = get_team_db(session_table=f"t_{team_id}_s", memory_table=f"t_{team_id}_m")
 
     # Create MemoryManager
     memory_manager = MemoryManager(

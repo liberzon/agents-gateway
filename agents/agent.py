@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 from typing import Callable, List, Optional
 
 from agno.agent import Agent
+from functools import lru_cache
+
 from agno.db.postgres import PostgresDb
 from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
 from agno.memory import MemoryManager
@@ -22,7 +24,7 @@ from api.services.models import PullPromptResponse
 from api.settings import api_settings
 from db.agent_info_crud import AgentConfig
 from db.db_models import SkillDB
-from db.session import db_url
+from db.session import db_engine, db_url  # noqa: F401  (db_url kept for callers)
 from toolkits.calendar import CalendarToolkit
 from toolkits.contacts import ContactsToolkit
 from toolkits.drive import DriveToolkit
@@ -222,6 +224,16 @@ def ensure_mcp_ready(toolkits: list) -> None:
             raise RuntimeError(f"MCP tool server not ready (no tools loaded): {url}")
 
 
+@lru_cache(maxsize=None)
+def get_agent_db(session_table: str) -> PostgresDb:
+    """One PostgresDb per session table, on the process-wide engine (db.session).
+
+    Cached because agents are built per (user, session): a fresh PostgresDb per agent
+    means a fresh connection pool per conversation.
+    """
+    return PostgresDb(db_engine=db_engine, session_table=session_table)
+
+
 def get_agent(
     prompt: PullPromptResponse,
     user_id: str,
@@ -257,8 +269,11 @@ def get_agent(
     if config is None:
         config = AgentConfig()
 
-    # Create PostgresDb instance for agent storage and memories
-    db_instance = PostgresDb(db_url=db_url, session_table=db_table_name)
+    # Agent storage + memories on the SHARED engine. A per-agent PostgresDb(db_url=...)
+    # builds its own connection pool, and agents are cached per (user, session), so
+    # every conversation added another pool until Supabase's 15-client session pooler
+    # refused connections and history writes failed.
+    db_instance = get_agent_db(db_table_name)
 
     # Create MemoryManager only if memory is enabled
     memory_manager = None
