@@ -2,7 +2,6 @@ import logging
 from typing import Any, List, Optional
 
 from agno.agent import Agent
-from agno.db.postgres import PostgresDb
 from agno.memory import MemoryManager
 from agno.team import Team, TeamMode
 
@@ -10,7 +9,7 @@ from agents.model_factory import create_model
 from agents.v2_selector import get_agent
 from api.services.knowledge_service import get_knowledge_service
 from db.agent_info_crud import AgentConfig, get_agent_config, get_agent_info
-from db.url import get_db_url
+from api.routes.v2.teams import get_team_db
 from toolkits.claude_code import ClaudeCodeToolkit
 from toolkits.managed_agents import ManagedAgentsToolkit
 
@@ -40,7 +39,6 @@ def build_supervisor_team(
     3. Attach toolkits, compose domain extensions
     4. Create Team(mode=TeamMode.coordinate)
     """
-    db_url = get_db_url()
 
     # Create a fresh DB session for this thread (avoids cross-thread SQLAlchemy issues)
     from db.session import get_db as _get_db
@@ -99,11 +97,9 @@ def build_supervisor_team(
         thread_db.close()
 
     # Create team storage
-    db_instance = PostgresDb(
-        db_url=db_url,
-        session_table=f"t_{team_id}_s",
-        memory_table=f"t_{team_id}_m",
-    )
+    # Shared engine + cached instance: a PostgresDb per build opened its own pool and
+    # exhausted Supabase's 15-client session pooler (see db/session.py).
+    db_instance = get_team_db(session_table=f"t_{team_id}_s", memory_table=f"t_{team_id}_m")
 
     from api.settings import api_settings as _settings
 
